@@ -1,0 +1,120 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+
+}
+
+datasource db {
+  provider = "postgresql"
+}
+// User model - stores customer and admin accounts
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  password  String     // Will be hashed with bcrypt
+  firstName String
+  lastName  String
+  phone     String
+  role      String     @default("user") // "user" or "admin"
+  
+  // Relations - a user can have many orders and addresses
+  orders    Order[]
+  addresses Address[]
+  cart      Cart?      // One-to-one: each user has max one cart
+  
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+// Product model - menu items (Rice dishes, soup bowls, meat pies, spring rolls, etc)
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  price       Decimal  @db.Decimal(10, 2)  // Fixed: £0.00 to £99,999,999.99
+  image       String   // URL to product image
+  category    String   // "pastries", "main meal", "chops", "platters", "belleful", "enjoyment"
+  available   Boolean  @default(true)
+  
+  // Relations - a product can be in many orders and carts
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Cart model - shopping cart (one per user)
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Relations - cart has many items
+  items     CartItem[]
+  
+  updatedAt DateTime   @updatedAt
+}
+
+
+// CartItem model - individual items in a cart
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  
+  // Composite key: only one of each product per cart
+  @@unique([cartId, productId])
+}
+
+// Order model - customer orders
+model Order {
+  id                String     @id @default(uuid())
+  orderNumber       String     @unique // User-friendly order number
+  userId            String
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Order contents
+  items             OrderItem[]
+  total             Decimal    @db.Decimal(10, 2)  //  Fixed: total order amount
+  status            String     @default("pending") // pending -> confirmed -> preparing -> ready -> delivered
+  
+  // Delivery info
+  deliveryAddress   String
+  specialInstructions String?
+  
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+// OrderItem model - individual items in an order
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)  //  Fixed: price at time of order
+}
+
+// Address model - user's delivery addresses
+model Address {
+  id        String  @id @default(uuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  street    String
+  city      String
+  zipCode   String
+  label     String  // "home", "work", "other"
+  
+  createdAt DateTime @default(now())
+}
+
