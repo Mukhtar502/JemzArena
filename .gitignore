@@ -25,6 +25,9 @@ backend/prisma/migrations/.DS_Store
 .vscode/
 .history/
 
+# Project materials
+Project materials/
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

@@ -3,10 +3,10 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/database/prisma.service';
+import { PrismaService } from '../../database/prisma.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
-import { buildCartSummary } from 'src/utils/response.util';
+import { buildCartSummary } from '../../utils/response.util';
 
 @Injectable()
 export class CartService {
@@ -81,26 +81,22 @@ export class CartService {
       },
     });
 
-    let cartItem;
-
-    if (existingItem) {
-      cartItem = await this.prisma.cartItem.update({
-        where: { id: existingItem.id },
-        data: {
-          quantity: existingItem.quantity + dto.quantity,
-        },
-        include: { product: true },
-      });
-    } else {
-      cartItem = await this.prisma.cartItem.create({
-        data: {
-          cart: { connect: { id: cart.id } },
-          product: { connect: { id: dto.productId } },
-          quantity: dto.quantity,
-        },
-        include: { product: true },
-      });
-    }
+    const cartItem = existingItem
+      ? await this.prisma.cartItem.update({
+          where: { id: existingItem.id },
+          data: {
+            quantity: existingItem.quantity + dto.quantity,
+          },
+          include: { product: true },
+        })
+      : await this.prisma.cartItem.create({
+          data: {
+            cart: { connect: { id: cart.id } },
+            product: { connect: { id: dto.productId } },
+            quantity: dto.quantity,
+          },
+          include: { product: true },
+        });
 
     const refreshedCart = await this.prisma.cart.findUnique({
       where: { id: cart.id },

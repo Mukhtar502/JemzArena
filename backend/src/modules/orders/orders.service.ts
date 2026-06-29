@@ -3,16 +3,16 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/database/prisma.service';
+import { PrismaService } from '../../database/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import {
   sendOrderConfirmationEmail,
   sendOrderWhatsAppNotification,
-} from 'src/utils/notification.util';
+} from '../../utils/notification.util';
 import {
   buildOrderSummary,
   sanitizeOrderResponse,
-} from 'src/utils/response.util';
+} from '../../utils/response.util';
 
 @Injectable()
 export class OrdersService {

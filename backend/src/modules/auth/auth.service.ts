@@ -8,11 +8,11 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from 'src/database/prisma.service';
-import { BcryptUtil } from 'src/utils/bcrypt.util';
+import { PrismaService } from '../../database/prisma.service';
+import { BcryptUtil } from '../../utils/bcrypt.util';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { sanitizeUserResponse } from 'src/utils/response.util';
+import { sanitizeUserResponse } from '../../utils/response.util';
 
 @Injectable()
 export class AuthService {

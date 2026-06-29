@@ -7,8 +7,8 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { jwtConfig } from 'src/config/jwt.config';
-import { DatabaseModule } from 'src/database/database.module';
+import { jwtConfig } from '../../config/jwt.config';
+import { DatabaseModule } from '../../database/database.module';
 
 @Module({
   imports: [DatabaseModule, PassportModule, JwtModule.register(jwtConfig)],
