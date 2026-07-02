@@ -12,8 +12,8 @@ const makeProductImage = (label: string) =>
   </svg>`)}`;
 
 async function main() {
-  const adminEmail = 'efunkunlejeminat@gmail.com';
-  const adminPassword = 'Jem123@';
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'change-me-locally';
 
   const products = [
     {
@@ -87,7 +87,7 @@ async function main() {
   });
 
   console.log(`Seeded ${products.length} products`);
-  console.log(`Admin login: ${adminEmail} / ${adminPassword}`);
+  console.log(`Admin login: ${adminEmail}`);
 }
 
 main()
