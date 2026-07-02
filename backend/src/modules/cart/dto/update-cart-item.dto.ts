@@ -1,6 +1,6 @@
-import { IsInt, Min } from 'class-validator';
+import { IsInt, Min, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateCartItemDto {
   @ApiProperty({ example: 3 })
@@ -8,4 +8,9 @@ export class UpdateCartItemDto {
   @IsInt()
   @Min(1)
   quantity!: number;
+
+  @ApiPropertyOptional({ example: 'Please make it mild.' })
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

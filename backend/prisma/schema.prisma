@@ -69,6 +69,7 @@ model CartItem {
   productId String
   product   Product  @relation(fields: [productId], references: [id])
   quantity  Int
+  notes     String?
   
   // Composite key: only one of each product per cart
   @@unique([cartId, productId])
@@ -76,22 +77,27 @@ model CartItem {
 
 // Order model - customer orders
 model Order {
-  id                String     @id @default(uuid())
-  orderNumber       String     @unique // User-friendly order number
-  userId            String
-  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String     @id @default(uuid())
+  orderNumber         String     @unique // User-friendly order number
+  userId              String?
+  user                User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Guest checkout fields
+  guestName           String?
+  guestEmail          String?
+  guestPhone          String?
   
   // Order contents
-  items             OrderItem[]
-  total             Decimal    @db.Decimal(10, 2)  //  Fixed: total order amount
-  status            String     @default("pending") // pending -> confirmed -> preparing -> ready -> delivered
+  items               OrderItem[]
+  total               Decimal    @db.Decimal(10, 2)  //  Fixed: total order amount
+  status              String     @default("pending") // pending -> confirmed -> preparing -> ready -> delivered
   
   // Delivery info
-  deliveryAddress   String
+  deliveryAddress     String
   specialInstructions String?
   
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 }
 
 // OrderItem model - individual items in an order
@@ -103,6 +109,7 @@ model OrderItem {
   product   Product @relation(fields: [productId], references: [id])
   quantity  Int
   price     Decimal @db.Decimal(10, 2)  //  Fixed: price at time of order
+  notes     String?
 }
 
 // Address model - user's delivery addresses

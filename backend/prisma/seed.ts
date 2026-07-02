@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { PrismaService } from '../src/database/prisma.service';
+import { BcryptUtil } from '../src/utils/bcrypt.util';
 
 const prisma = new PrismaService();
 
@@ -11,6 +12,9 @@ const makeProductImage = (label: string) =>
   </svg>`)}`;
 
 async function main() {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'change-me-locally';
+
   const products = [
     {
       name: 'Meat Pie',
@@ -57,10 +61,33 @@ async function main() {
   ];
 
   await prisma.$connect();
+  await prisma.cartItem.deleteMany();
+  await prisma.orderItem.deleteMany();
   await prisma.product.deleteMany();
   await prisma.product.createMany({ data: products });
 
+  const hashedPassword = await BcryptUtil.hashPassword(adminPassword);
+  await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {
+      password: hashedPassword,
+      role: 'admin',
+      firstName: 'Admin',
+      lastName: 'User',
+      phone: '+15550000000',
+    },
+    create: {
+      email: adminEmail,
+      password: hashedPassword,
+      role: 'admin',
+      firstName: 'Admin',
+      lastName: 'User',
+      phone: '+15550000000',
+    },
+  });
+
   console.log(`Seeded ${products.length} products`);
+  console.log(`Admin login: ${adminEmail}`);
 }
 
 main()
