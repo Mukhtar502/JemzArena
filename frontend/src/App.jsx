@@ -1,261 +1,388 @@
-import { useEffect, useState } from "react";
-import "./App.css";
-import imageOne from "./assets/featured/WhatsApp Image 2026-06-18 at 01.02.32.jpeg";
-import imageTwo from "./assets/featured/WhatsApp Image 2026-06-18 at 01.02.33.jpeg";
-import imageThree from "./assets/featured/WhatsApp Image 2026-06-30 at 00.05.23 (1).jpeg";
-import imageFour from "./assets/featured/WhatsApp Image 2026-06-30 at 00.05.23 (2).jpeg";
-import imageFive from "./assets/featured/WhatsApp Image 2026-06-30 at 00.05.23 (3).jpeg";
-import imageSix from "./assets/featured/WhatsApp Image 2026-06-30 at 00.05.23 (4).jpeg";
-import imageSeven from "./assets/featured/WhatsApp Image 2026-06-30 at 00.05.23 (5).jpeg";
-import imageEight from "./assets/featured/WhatsApp Image 2026-06-30 at 00.05.23 (6).jpeg";
-import imageNine from "./assets/featured/WhatsApp Image 2026-06-30 at 00.05.23 (7).jpeg";
-import imageTen from "./assets/featured/WhatsApp Image 2026-06-30 at 00.05.23.jpeg";
-
-const featuredImages = [
-  imageOne,
-  imageTwo,
-  imageThree,
-  imageFour,
-  imageFive,
-  imageSix,
-  imageSeven,
-  imageEight,
-  imageNine,
-  imageTen,
-];
-
-const fallbackProducts = [
-  {
-    name: "Meat Pie",
-    description:
-      "Flaky pastry filled with seasoned minced beef and warm spices.",
-    price: "$15.99",
-    tag: "Bestseller",
-    image: featuredImages[0],
-  },
-  {
-    name: "Jollof Rice (Signature)",
-    description:
-      "Classic West-African Jollof, slow-cooked tomato rice with seasoned turkey or chicken.",
-    price: "$12.99",
-    tag: "House Special",
-    image: featuredImages[1],
-  },
-  {
-    name: "Peppered Chicken Platter",
-    description:
-      "Spicy, charred peppered chicken pieces served with sides — great for sharing.",
-    price: "$18.50",
-    tag: "Spicy",
-    image: featuredImages[2],
-  },
-  {
-    name: "Assorted Buffet Pack",
-    description:
-      "Chafing-dish style selection of jollof, fried rice, and house sides for events.",
-    price: "$29.99",
-    tag: "Platter",
-    image: featuredImages[3],
-  },
-  {
-    name: "Jollof Meal Pack",
-    description:
-      "Takeaway tubs of our signature Jollof — ideal for families and catering.",
-    price: "$20.00",
-    tag: "Family",
-    image: featuredImages[4],
-  },
-  {
-    name: "Mixed Rice Bowl",
-    description:
-      "A hearty bowl with Jollof and fried rice, served with a protein (turkey/chicken).",
-    price: "$10.99",
-    tag: "Combo",
-    image: featuredImages[5],
-  },
-  {
-    name: "Fried Plantain (Dodo)",
-    description:
-      "Sweet, caramelised fried plantain — a perfect side for many dishes.",
-    price: "$4.50",
-    tag: "Side",
-    image: featuredImages[6],
-  },
-  {
-    name: "Grilled Fish Platter",
-    description:
-      "Seasoned grilled fish served with plantain, rice and salad — festival-ready.",
-    price: "$24.00",
-    tag: "Platter",
-    image: featuredImages[7],
-  },
-  {
-    name: "Shrimp Spring Rolls",
-    description:
-      "Crisp spring rolls wrapped around plump shrimp — light and crunchy.",
-    price: "$8.50",
-    tag: "Starter",
-    image: featuredImages[8],
-  },
-  {
-    name: "Puff Puff",
-    description:
-      "Soft, golden fried dough balls — sweet, pillowy and addictive.",
-    price: "$5.99",
-    tag: "Dessert",
-    image: featuredImages[9],
-  },
-];
+import { useCallback, useEffect, useState } from "react";
+import { Route, Routes, useNavigate } from "react-router-dom";
+import { fallbackProducts } from "./data/fallbackProducts";
+import { requestJson, removeAuthToken, saveAuthToken } from "./services/api";
+import { useLocalCart } from "./hooks/useLocalCart";
+import Header from "./components/Header";
+import StatusBanner from "./components/StatusBanner";
+import HomePage from "./pages/HomePage";
+import MenuPage from "./pages/MenuPage";
+import ProductsPage from "./pages/ProductsPage";
+import ProductDetailPage from "./pages/ProductDetailPage";
+import CartPage from "./pages/CartPage";
+import OrdersPage from "./pages/OrdersPage";
+import AuthPage from "./pages/AuthPage";
+import AdminProductsPage from "./pages/AdminProductsPage";
 
 function App() {
   const [products, setProducts] = useState(fallbackProducts);
+  const [token, setToken] = useState(
+    () => localStorage.getItem("jemz_token") || "",
+  );
+  const [user, setUser] = useState(null);
+  const [cart, setCart] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const guestCart = useLocalCart();
+  const navigate = useNavigate();
+
+  const normalizeItems = (data) => {
+    if (Array.isArray(data)) return data;
+    if (data?.items && Array.isArray(data.items)) return data.items;
+    return [];
+  };
+
+  const loadProducts = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/products?limit=10`,
+      );
+      if (!response.ok) throw new Error("Backend unavailable");
+      const data = await response.json();
+      const items = Array.isArray(data) ? data : data.items || [];
+      if (items.length) {
+        const mapped = items.slice(0, 10).map((item, index) => ({
+          id: item.id || `backend-${index + 1}`,
+          name: item.name,
+          description: item.description,
+          price: `$${Number(item.price).toFixed(2)}`,
+          tag: item.category || "Featured",
+          image:
+            item.image ||
+            fallbackProducts[index % fallbackProducts.length].image,
+        }));
+        setProducts(mapped);
+      }
+    } catch (error) {
+      console.info("Using fallback menu:", error);
+    }
+  }, []);
+
+  const loadProfile = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await requestJson("/api/auth/me");
+      setUser(data);
+    } catch (error) {
+      console.info("Profile unavailable:", error);
+    }
+  }, [token]);
+
+  const loadCart = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await requestJson("/api/cart");
+      setCart(normalizeItems(data));
+    } catch (error) {
+      console.info("Cart unavailable:", error);
+    }
+  }, [token]);
+
+  const loadOrders = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await requestJson("/api/orders");
+      setOrders(Array.isArray(data) ? data : data.items || []);
+    } catch (error) {
+      console.info("Orders unavailable:", error);
+    }
+  }, [token]);
 
   useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const response = await fetch(
-          "http://localhost:3000/api/products?limit=6",
-        );
-        if (!response.ok) throw new Error("Backend unavailable");
+    let isActive = true;
 
-        const data = await response.json();
-        const items = Array.isArray(data) ? data : data.items || [];
-
-        if (items.length) {
-          setProducts(
-            items.slice(0, 10).map((item, index) => ({
-              name: item.name,
-              description: item.description,
-              price: `$${Number(item.price).toFixed(2)}`,
-              tag: item.category || "Featured",
-              image: featuredImages[index % featuredImages.length],
-            })),
-          );
-        }
-      } catch (error) {
-        console.info("Using fallback menu:", error);
+    const syncData = async () => {
+      await loadProducts();
+      if (!isActive) return;
+      if (token) {
+        await Promise.all([loadProfile(), loadCart(), loadOrders()]);
       }
     };
 
-    loadProducts();
-  }, []);
+    void syncData();
+
+    return () => {
+      isActive = false;
+    };
+  }, [token, loadProducts, loadProfile, loadCart, loadOrders]);
+
+  useEffect(() => {
+    if (!message) return undefined;
+    const timer = window.setTimeout(() => setMessage(""), 5000);
+    return () => window.clearTimeout(timer);
+  }, [message]);
+
+  const handleLogin = async ({ email, password }) => {
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const data = await requestJson("/api/auth/login", {
+        method: "POST",
+        body: { email, password },
+        auth: false,
+      });
+      saveAuthToken(data.token);
+      setToken(data.token);
+      setMessage(data.message || "Signed in successfully");
+      navigate("/menu");
+    } catch (error) {
+      setMessage(error.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async ({ email, password, fullName }) => {
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const data = await requestJson("/api/auth/register", {
+        method: "POST",
+        body: {
+          email,
+          password,
+          firstName: fullName,
+        },
+        auth: false,
+      });
+      saveAuthToken(data.token);
+      setToken(data.token);
+      setMessage(data.message || "Account created successfully");
+      navigate("/menu");
+    } catch (error) {
+      setMessage(error.message || "Registration failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addToCart = async (product, quantity = 1, notes = "") => {
+    if (!token) {
+      // Guest mode: add to local cart
+      guestCart.addItem(product, quantity, notes);
+      setMessage(`${product.name} added to cart`);
+      return;
+    }
+
+    // Authenticated mode: send to backend
+    try {
+      const data = await requestJson("/api/cart", {
+        method: "POST",
+        body: { productId: product.id, quantity, notes },
+      });
+      setCart(normalizeItems(data));
+      setMessage(`${product.name} added to cart`);
+    } catch (error) {
+      setMessage(error.message || "Unable to add item to cart");
+    }
+  };
+
+  const updateCartItem = async (itemId, quantity, notes = "") => {
+    if (!token) {
+      // Guest mode
+      guestCart.updateItem(itemId, quantity, notes);
+      return;
+    }
+
+    // Authenticated mode
+    try {
+      const data = await requestJson(`/api/cart/${itemId}`, {
+        method: "PUT",
+        body: { quantity, notes },
+      });
+      setCart(normalizeItems(data));
+    } catch (error) {
+      setMessage(error.message || "Unable to update cart");
+    }
+  };
+
+  const removeCartItem = async (itemId) => {
+    if (!token) {
+      guestCart.removeItem(itemId);
+      return;
+    }
+
+    try {
+      const data = await requestJson(`/api/cart/${itemId}`, {
+        method: "DELETE",
+      });
+      setCart(normalizeItems(data));
+    } catch (error) {
+      setMessage(error.message || "Unable to remove cart item");
+    }
+  };
+
+  const checkoutCart = async ({
+    deliveryAddress,
+    specialInstructions,
+    guestName,
+    guestEmail,
+    guestPhone,
+  }) => {
+    setLoading(true);
+    setMessage("");
+
+    if (!token) {
+      const payload = {
+        deliveryAddress,
+        specialInstructions,
+        guestName,
+        guestEmail,
+        guestPhone,
+        items: guestCart.cart.map((item) => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          notes: item.notes,
+        })),
+      };
+
+      try {
+        const data = await requestJson("/api/orders/guest-checkout", {
+          method: "POST",
+          body: payload,
+          auth: false,
+        });
+        guestCart.clear();
+        setMessage("Order placed successfully");
+        navigate("/orders");
+        return data;
+      } catch (error) {
+        setMessage(error.message || "Checkout failed");
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    const payload = {
+      deliveryAddress,
+      specialInstructions,
+    };
+
+    try {
+      const data = await requestJson("/api/orders/checkout", {
+        method: "POST",
+        body: payload,
+      });
+      setMessage("Order placed successfully");
+      guestCart.clear();
+      navigate(token ? "/orders" : "/menu");
+      return data;
+    } catch (error) {
+      setMessage(error.message || "Checkout failed");
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = () => {
+    removeAuthToken();
+    setToken("");
+    setUser(null);
+    setCart([]);
+    setOrders([]);
+    setMessage("Signed out successfully");
+    navigate("/");
+  };
+
+  const isAdmin = Boolean(token && user?.role === "admin");
 
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <a className="brand" href="#home">
-          JemzArena
-        </a>
-        <nav className="nav-links" aria-label="Primary navigation">
-          <a href="#menu">Menu</a>
-          <a href="#story">Story</a>
-          <a href="#contact">Contact</a>
-        </nav>
-        <a className="btn btn-dark" href="#menu">
-          Order now
-        </a>
-      </header>
-
-      <main id="home">
-        <section className="hero">
-          <div className="hero-copy">
-            <p className="eyebrow">Warm flavors • Crafted for daily cravings</p>
-            <h1>Comfort food, styled for the modern table.</h1>
-            <p className="lead">
-              Discover a polished food-ordering experience with rich colors,
-              fast browsing, and a mobile-first layout built for every screen.
-            </p>
-            <div className="hero-actions">
-              <a className="btn btn-primary" href="#menu">
-                Explore menu
-              </a>
-              <a className="btn btn-outline" href="#story">
-                Our story
-              </a>
-            </div>
-            <ul className="hero-highlights">
-              <li>Freshly prepared favorites</li>
-              <li>Fast checkout experience</li>
-              <li>Responsive across mobile, tablet, and desktop</li>
-            </ul>
-          </div>
-
-          <div className="hero-card" aria-label="Featured item">
-            <div className="hero-card-top">
-              <p>Tonight’s spotlight</p>
-              <h2>Spiced beef suya bowl</h2>
-            </div>
-            <div className="meal-preview">
-              <div className="meal-badge">Chef pick</div>
-              <div className="meal-text">
-                <strong>Smoky spice</strong>
-                <span>Rice, greens, and house sauce</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="stats" aria-label="Highlights">
-          <article>
-            <strong>12+</strong>
-            <span>signature dishes</span>
-          </article>
-          <article>
-            <strong>24/7</strong>
-            <span>day-to-day ordering</span>
-          </article>
-          <article>
-            <strong>100%</strong>
-            <span>mobile responsive</span>
-          </article>
-        </section>
-
-        <section className="menu-section" id="menu">
-          <div className="section-title">
-            <p className="eyebrow">Featured picks</p>
-            <h2>Built for cravings and easy browsing.</h2>
-          </div>
-          <div className="product-grid">
-            {products.map((product) => (
-              <article className="product-card" key={product.name}>
-                <div className="product-visual">
-                  {product.image ? (
-                    <img src={product.image} alt={product.name} />
-                  ) : (
-                    product.name
-                  )}
+    <div className="min-h-screen bg-slate-50 text-slate-950">
+      <Header token={token} user={user} onLogout={logout} />
+      <StatusBanner message={message} />
+      <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <Routes>
+          <Route
+            path="/"
+            element={<HomePage products={products} addToCart={addToCart} />}
+          />
+          <Route
+            path="/menu"
+            element={<MenuPage products={products} addToCart={addToCart} />}
+          />
+          <Route
+            path="/products"
+            element={<ProductsPage addToCart={addToCart} />}
+          />
+          <Route
+            path="/products/:productId"
+            element={<ProductDetailPage addToCart={addToCart} />}
+          />
+          <Route
+            path="/login"
+            element={
+              token ? (
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-10 text-center shadow-lg shadow-slate-200/50">
+                  <p className="text-lg font-semibold text-slate-900">
+                    You are already logged in.
+                  </p>
+                  <p className="mt-3 text-sm text-slate-600">
+                    You can browse the menu and manage your cart.
+                  </p>
                 </div>
-                <div className="product-meta">
-                  <span className="eyebrow">{product.tag}</span>
-                  <strong>{product.price}</strong>
+              ) : (
+                <AuthPage
+                  onLogin={handleLogin}
+                  onRegister={handleRegister}
+                  loading={loading}
+                />
+              )
+            }
+          />
+          <Route
+            path="/cart"
+            element={
+              <CartPage
+                cart={token ? cart : guestCart.cart}
+                onItemChange={updateCartItem}
+                onRemoveItem={removeCartItem}
+                onCheckout={checkoutCart}
+                isGuest={!token}
+              />
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              token ? (
+                <OrdersPage orders={orders} user={user} />
+              ) : (
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-10 text-center shadow-lg shadow-slate-200/50">
+                  <p className="text-lg font-semibold text-slate-900">
+                    Please log in to view orders.
+                  </p>
+                  <p className="mt-3 text-sm text-slate-600">
+                    Order history is available after signing in.
+                  </p>
                 </div>
-                <h3>{product.name}</h3>
-                <p>{product.description}</p>
-                <a className="btn btn-outline" href="#contact">
-                  Add to order
-                </a>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="story-section" id="story">
-          <div className="story-card">
-            <p className="eyebrow">Why JemzArena</p>
-            <h2>A food experience with warmth, clarity, and comfort.</h2>
-            <p>
-              We blend earthy colors, generous spacing, and intuitive navigation
-              to create an ordering experience that feels inviting on every
-              device.
-            </p>
-            <a className="btn btn-primary" href="#contact">
-              Get started
-            </a>
-          </div>
-        </section>
+              )
+            }
+          />
+          <Route
+            path="/admin/products"
+            element={
+              isAdmin ? (
+                <AdminProductsPage />
+              ) : (
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-10 text-center shadow-lg shadow-slate-200/50">
+                  <p className="text-lg font-semibold text-slate-900">
+                    Admin access required.
+                  </p>
+                  <p className="mt-3 text-sm text-slate-600">
+                    Sign in with an admin account to manage products.
+                  </p>
+                </div>
+              )
+            }
+          />
+        </Routes>
       </main>
-
-      <footer id="contact">
+      <footer className="border-t border-slate-200 bg-slate-950/90 py-6 text-center text-sm text-slate-200">
         <p>JemzArena • Designed for joyful, responsive ordering.</p>
       </footer>
     </div>
