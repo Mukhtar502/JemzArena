@@ -25,6 +25,9 @@ backend/prisma/migrations/.DS_Store
 .vscode/
 .history/
 
+# Local project notes / chat exports
+copilot_saved_chat.md
+
 # Project materials
 Project materials/
 
