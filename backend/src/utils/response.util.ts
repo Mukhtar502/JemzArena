@@ -38,6 +38,7 @@ export function buildCartSummary(cart: AnyRecord | null | undefined) {
     id: item.id,
     quantity: item.quantity,
     product: item.product,
+    notes: item.notes,
     subtotal: (Number(item.product?.price ?? 0) * item.quantity).toFixed(2),
   }));
 
@@ -81,6 +82,7 @@ export function buildOrderSummary(order: AnyRecord | null | undefined) {
       productId: item.productId,
       quantity: item.quantity,
       price: item.price,
+      notes: item.notes,
       product: item.product,
     })),
     createdAt: order.createdAt,
