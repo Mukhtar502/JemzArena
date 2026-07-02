@@ -8,6 +8,9 @@ import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 import { buildCartSummary } from '../../utils/response.util';
 
+const normalizeNotes = (notes?: unknown): string | undefined =>
+  typeof notes === 'string' ? notes : undefined;
+
 @Injectable()
 export class CartService {
   constructor(private prisma: PrismaService) {}
@@ -55,6 +58,7 @@ export class CartService {
       items: cart.items.map((item) => ({
         id: item.id,
         quantity: item.quantity,
+        notes: normalizeNotes((item as { notes?: string | null }).notes),
         product: item.product,
       })),
       updatedAt: cart.updatedAt,
@@ -72,6 +76,8 @@ export class CartService {
 
     const cart = await this.getOrCreateCart(userId);
 
+    const notesValue = normalizeNotes(dto.notes);
+
     const existingItem = await this.prisma.cartItem.findUnique({
       where: {
         cartId_productId: {
@@ -86,6 +92,9 @@ export class CartService {
           where: { id: existingItem.id },
           data: {
             quantity: existingItem.quantity + dto.quantity,
+            notes:
+              notesValue ??
+              normalizeNotes((existingItem as { notes?: string | null }).notes),
           },
           include: { product: true },
         })
@@ -94,6 +103,7 @@ export class CartService {
             cart: { connect: { id: cart.id } },
             product: { connect: { id: dto.productId } },
             quantity: dto.quantity,
+            notes: notesValue,
           },
           include: { product: true },
         });
@@ -125,9 +135,13 @@ export class CartService {
       throw new NotFoundException('Cart item not found');
     }
 
+    const notesValue = normalizeNotes(dto.notes);
     const cartItem = await this.prisma.cartItem.update({
       where: { id: itemId },
-      data: { quantity: dto.quantity },
+      data: {
+        quantity: dto.quantity,
+        notes: notesValue,
+      },
       include: { product: true },
     });
 

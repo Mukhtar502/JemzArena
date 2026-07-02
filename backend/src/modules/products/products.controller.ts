@@ -21,6 +21,8 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { FilterProductsDto } from './dto/filter-products.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Roles } from '../auth/guards/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @ApiTags('Products')
 @Controller('api/products')
@@ -76,7 +78,8 @@ export class ProductsController {
 
   // POST /api/products - Create product (admin only)
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @ApiBearerAuth('JWT')
   @ApiOperation({ summary: 'Create a new product' })
   @ApiResponse({ status: 201, description: 'Product created' })
@@ -86,7 +89,8 @@ export class ProductsController {
 
   // PUT /api/products/:id - Update product (admin only)
   @Put(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @ApiBearerAuth('JWT')
   @ApiOperation({ summary: 'Update an existing product' })
   @ApiResponse({ status: 200, description: 'Product updated' })
@@ -99,7 +103,8 @@ export class ProductsController {
 
   // DELETE /api/products/:id - Delete product (admin only)
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @ApiBearerAuth('JWT')
   @ApiOperation({ summary: 'Delete a product' })
   @ApiResponse({ status: 200, description: 'Product deleted' })
